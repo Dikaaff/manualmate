@@ -1452,6 +1452,49 @@ h1 {
   margin-left: auto;
 }
 
+.decision-trace {
+  margin: 14px 0 18px;
+  padding: 12px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  background: hsl(var(--muted) / 0.2);
+}
+
+.decision-trace-head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  color: hsl(var(--muted-foreground));
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.decision-trace ol {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.decision-trace li {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  background: hsl(var(--background));
+}
+
+.decision-trace li.complete { border-color: hsl(var(--primary) / .25); }
+.decision-trace li.blocked-step { border-color: hsl(var(--destructive) / .3); }
+.decision-trace li.skipped { opacity: .62; }
+.decision-trace li span { display: block; color: hsl(var(--muted-foreground)); font: 10px ui-monospace, monospace; }
+.decision-trace li strong { display: block; margin-top: 4px; font-size: 11px; }
+.decision-trace li small { display: block; overflow: hidden; margin-top: 2px; color: hsl(var(--muted-foreground)); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+
 .meta-text {
   color: hsl(var(--muted-foreground));
   font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;

@@ -47,7 +47,9 @@ The product is ready when:
 - [x] Six-check safety gate and server-side strip.
 - [x] Grounding validation and honest status.
 - [x] Browser-local history.
-- [x] 30 automated tests and CI.
+- [x] 34 automated tests and CI.
+- [x] Labeled 30-case safety/grounding acceptance set with baseline metrics.
+- [x] Visible decision trace from preflight through finalization.
 - [x] Remove fixture mode and demo artifacts.
 - [ ] Live smoke test with a real key and three real photos.
 - [ ] Prompt and schema tuning based on those photos.
@@ -63,7 +65,7 @@ The product is ready when:
 
 ### Later: evaluation
 
-- [ ] Labeled dataset of furniture photos with defect locations.
+- [x] Labeled acceptance set of 30 cases with allowed, blocked, and grounding labels.
 - [ ] Measure marker overlap and checklist usefulness.
 - [ ] Human review protocol for safety regressions.
 

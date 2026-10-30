@@ -173,6 +173,20 @@ export function ResultPanel({
             <span className={`badge ${result.grounding.status}`}>{groundingLabel(result.grounding.status)}</span>
           </div>
 
+          <div className="decision-trace" aria-label="Analysis decision trace">
+            <div className="decision-trace-head">
+              <span>Decision trace</span>
+              <span className="meta-text">server validated</span>
+            </div>
+            <ol>
+              <li className="complete"><span>01</span><strong>Preflight</strong><small>photo and hazard gate</small></li>
+              <li className={result.provider === 'meta' ? 'complete' : 'skipped'}><span>02</span><strong>Model</strong><small>{result.provider === 'meta' ? result.model : 'skipped'}</small></li>
+              <li className={result.blocked ? 'blocked-step' : 'complete'}><span>03</span><strong>Safety</strong><small>{result.blocked ? 'stopped' : 'passed'}</small></li>
+              <li className={result.grounding.status === 'ungrounded' ? 'blocked-step' : 'complete'}><span>04</span><strong>Grounding</strong><small>{groundingLabel(result.grounding.status)}</small></li>
+              <li className={result.blocked ? 'blocked-step' : 'complete'}><span>05</span><strong>Finalize</strong><small>{result.blocked ? 'no guidance' : 'checklist ready'}</small></li>
+            </ol>
+          </div>
+
           {result.blocked ? (
             <div className="blocked">
               <div className="blocked-top">

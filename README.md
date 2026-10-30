@@ -14,7 +14,7 @@ There is no demo fixture and no canned analysis. If the model is not configured 
 
 | Capability | Implementation |
 | --- | --- |
-| Vision analysis | The uploaded image is sent to Meta (`muse-spark-1.3` by default) with a structured JSON contract. If the primary is unavailable, the adapter tries ``, then ``. |
+| Vision analysis | The uploaded image is sent to Meta (`muse-spark-1.3` by default) with a validated JSON contract. Optional fallback models can be configured explicitly. |
 | Visual grounding | Meta returns `box_2d` regions normalized to 0-1000. The server validates bounds, size, and duplicates; the client draws them over the uploaded photo. |
 | Safety gate | Six checks in `app/lib/safety.ts`. A blocked result is stripped of tools, parts, and steps on the server before the response leaves the API. |
 | Repair checklist | The model returns ordered steps with a stop condition per step. The UI tracks progress and can copy a repair brief. |
@@ -24,7 +24,7 @@ There is no demo fixture and no canned analysis. If the model is not configured 
 ## Requirements
 
 - Node.js 22 LTS recommended (the deployment is pinned to `22.x`; newer local versions also work).
-- A Google AI Studio API key with access to a vision model.
+- A Meta Model API key with access to `muse-spark-1.3`.
 
 ## Setup
 
@@ -37,7 +37,7 @@ npm run dev
 
 Open http://localhost:3000. The header must show `MODEL READY`. If it shows `SERVICE UNAVAILABLE`, the server cannot see a key and analysis is disabled by design.
 
-Get a key from Google AI Studio: https://aistudio.google.com/apikey
+Get a key from the Meta developer dashboard: https://dev.meta.ai/docs/authentication
 
 ## Verify
 
@@ -63,7 +63,7 @@ flowchart LR
   C -->|blocked| Z[Blocked result<br/>steps stripped]
   C -->|allowed| D{Model key<br/>configured?}
   D -->|no| E[503 missing_key<br/>no result]
-  D -->|yes| F[Meta 3.8 Flash<br/>automatic model fallback<br/>structured JSON + box_2d]
+  D -->|yes| F[Meta muse-spark-1.3<br/>optional model fallback<br/>validated JSON + box_2d]
   F --> G[Zod validation]
   G --> H[Safety gate<br/>model + object + keywords + actions + confidence]
   H --> I[Grounding validation<br/>bounds, size, dedupe]
@@ -80,7 +80,7 @@ Full details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 2. The API checks the file signature, size, and rate limit.
 3. A preflight scan checks the hint. `"electrical panel"` stops before any model call.
 4. If no key is configured, the request fails with `503 missing_key`. There is no fixture or canned analysis.
-5. Meta receives the image, a strict system prompt, and a JSON schema. `thinkingLevel` is `low`. A transient `UNAVAILABLE` response moves to the next configured model.
+5. Meta receives the image in a user message, a strict system prompt, and a JSON contract. A transient upstream failure moves to the next explicitly configured model.
 6. The response is parsed and validated with Zod; malformed JSON triggers one retry.
 7. The safety gate checks the model's classification, object category, hazard keywords, dangerous actions, and confidence floor.
 8. Grounding validation drops boxes that are out of bounds, too small, full-frame, or duplicated.
@@ -152,7 +152,7 @@ MODEL_NAME=muse-spark-1.3
 MODEL_FALLBACK_MODELS=,
 ```
 
-`GOOGLE_API_KEY` is accepted as an alias. `MODEL_FALLBACK_MODELS` is a comma-separated cascade. `MODEL_BASE_URL` is an optional override for tests or a compatible gateway.
+`MODEL_FALLBACK_MODELS` is an optional comma-separated cascade. `MODEL_BASE_URL` is an optional override for tests or a compatible gateway.
 
 ## Deploy
 
@@ -190,6 +190,7 @@ docs/
 - Bounding boxes are model estimates, not a segmentation mask. Confirm visually.
 - HEIC photos from some phones are rejected; use JPG/PNG/WebP.
 - Rate limiting is per server instance and in-memory, not global.
+- The 10 requests/minute/IP limiter is best-effort on serverless deployments; instances do not share buckets. Use a durable shared limiter before opening the app to untrusted traffic.
 - There is no authentication; history is device-local.
 - The model can still miss a defect. The app is a visual observation tool, not a diagnosis.
 - Blocked categories are intentionally broad. Overblocking is preferred to unsafe guidance.
@@ -197,3 +198,9 @@ docs/
 ## Verification map
 
 Start with [docs/EVIDENCE.md](docs/EVIDENCE.md). Short version: the live path is `app/api/analyze/route.ts` -> `app/lib/analysis.ts` -> `app/lib/meta.ts`, and `tests/meta-integration.test.ts` runs that entire path against a Meta-compatible server.
+
+## Why this is not a simple image analyzer
+
+ManualMate is an observe-only, verifiable inspection agent. It combines a server-side preflight safety gate, a constrained Meta vision response, Zod validation, normalized visual grounding, a second safety pass, and server-side removal of unsafe tools or steps. The visible decision trace shows the path from preflight to model, safety, grounding, and finalization. A model guess alone is never presented as a repair instruction.
+
+The small labeled acceptance set and baseline results are documented in [docs/EVAL-SET.md](docs/EVAL-SET.md). The three-minute walkthrough is scripted in [docs/DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md).
