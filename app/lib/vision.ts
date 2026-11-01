@@ -1,5 +1,11 @@
-import { configuredModel, fallbackModels, metaBaseUrl } from './config';
-import { buildUserPrompt, rawAnalysisSchema, systemPrompt, type RawAnalysis } from './model-schema';
+import { configuredModel, fallbackModels, modelApiKey, modelBaseUrl } from './config';
+import {
+  analysisResponseSchema,
+  buildUserPrompt,
+  rawAnalysisSchema,
+  systemPrompt,
+  type RawAnalysis,
+} from './model-schema';
 
 export type ProviderErrorCode =
   | 'missing_key'
@@ -26,28 +32,26 @@ export class ProviderError extends Error {
   }
 }
 
-export type MetaInput = {
+export type ModelInput = {
   image: Uint8Array;
   mimeType: string;
   hint: string;
 };
 
-export type MetaOutput = {
+export type ModelOutput = {
   raw: RawAnalysis;
   model: string;
   latencyMs: number;
 };
 
-type MetaTextPart = { type: 'text'; text: string };
-type MetaImagePart = { type: 'image_url'; image_url: { url: string } };
-type MetaContentPart = MetaTextPart | MetaImagePart;
-
-type MetaPayload = {
-  choices?: Array<{
-    message?: { content?: string | MetaContentPart[] | null; refusal?: string | null };
-    finish_reason?: string;
+type ModelPart = { text?: string };
+type ModelPayload = {
+  candidates?: Array<{
+    content?: { parts?: ModelPart[] };
+    finishReason?: string;
   }>;
-  error?: { message?: string; code?: string; type?: string };
+  promptFeedback?: { blockReason?: string };
+  error?: { message?: string; status?: string; code?: number };
 };
 
 const ATTEMPT_TIMEOUT_MS = 40_000;
@@ -66,25 +70,28 @@ function normalizeJson(text: string): string {
   return (fenced ? fenced[1] : text).trim();
 }
 
-function partText(part: MetaContentPart): string {
-  if (part.type === 'text') return part.text;
-  return '';
-}
-
-function extractText(payload: MetaPayload): string {
-  const content = payload.choices?.[0]?.message?.content;
-  if (typeof content === 'string') return content.trim();
-  if (Array.isArray(content)) {
-    return content
-      .filter((part): part is MetaTextPart => part.type === 'text')
-      .map(partText)
-      .join('')
-      .trim();
+function toResponseSchema(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(toResponseSchema);
+  if (value && typeof value === 'object') {
+    const result: Record<string, unknown> = {};
+    for (const [key, entry] of Object.entries(value)) {
+      result[key] = key === 'type' && typeof entry === 'string' ? entry.toUpperCase() : toResponseSchema(entry);
+    }
+    return result;
   }
-  return '';
+  return value;
 }
 
-function mapHttpError(status: number, payload: MetaPayload | null): ProviderError {
+function extractText(payload: ModelPayload): string {
+  const parts = payload.candidates?.[0]?.content?.parts;
+  if (!Array.isArray(parts)) return '';
+  return parts
+    .map((part) => (typeof part.text === 'string' ? part.text : ''))
+    .join('')
+    .trim();
+}
+
+function mapHttpError(status: number, payload: ModelPayload | null): ProviderError {
   if (status === 429) {
     return new ProviderError(
       'rate_limited',
@@ -100,15 +107,20 @@ function mapHttpError(status: number, payload: MetaPayload | null): ProviderErro
     const message = (payload?.error?.message ?? '').toLowerCase();
     if (
       message.includes('api key') ||
+      message.includes('api_key') ||
       message.includes('credential') ||
       message.includes('permission') ||
+      message.includes('unauthenticated') ||
       message.includes('unauthorized')
     ) {
       return new ProviderError('auth', 'The model credentials were rejected.', 502, false);
     }
     return new ProviderError('bad_request', 'The model rejected the request format.', 502, false);
   }
-  const detail = payload?.error?.type || payload?.error?.code;
+  if (status === 404) {
+    return new ProviderError('upstream', 'The requested model is not available.', 502, true);
+  }
+  const detail = payload?.error?.status;
   return new ProviderError(
     'upstream',
     `The model provider returned an error${detail ? ` (${detail})` : ''}.`,
@@ -125,27 +137,33 @@ function toProviderError(error: unknown): ProviderError {
 async function attemptOnce(
   apiKey: string,
   model: string,
-  input: MetaInput,
+  input: ModelInput,
   timeoutMs: number,
 ): Promise<{ raw: RawAnalysis }> {
-  const url = `${metaBaseUrl()}/chat/completions`;
+  const url = `${modelBaseUrl()}/models/${encodeURIComponent(model)}:generateContent`;
   const body = {
-    model,
-    messages: [
-      { role: 'system', content: systemPrompt },
+    systemInstruction: { parts: [{ text: systemPrompt }] },
+    contents: [
       {
         role: 'user',
-        content: [
-          { type: 'text', text: `${buildUserPrompt(input.hint)}\n\n${JSON_CONTRACT}` },
+        parts: [
+          { text: `${buildUserPrompt(input.hint)}\n\n${JSON_CONTRACT}` },
           {
-            type: 'image_url',
-            image_url: { url: `data:${input.mimeType};base64,${Buffer.from(input.image).toString('base64')}` },
+            inlineData: {
+              mimeType: input.mimeType,
+              data: Buffer.from(input.image).toString('base64'),
+            },
           },
         ],
       },
     ],
-    temperature: 0.2,
-    max_tokens: 2048,
+    generationConfig: {
+      temperature: 0.2,
+      maxOutputTokens: 4096,
+      thinkingConfig: { thinkingLevel: 'low' },
+      responseMimeType: 'application/json',
+      responseSchema: toResponseSchema(analysisResponseSchema),
+    },
   };
 
   const controller = new AbortController();
@@ -158,7 +176,7 @@ async function attemptOnce(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
+        'x-goog-api-key': apiKey,
       },
       body: JSON.stringify(body),
       signal: controller.signal,
@@ -174,9 +192,9 @@ async function attemptOnce(
     clearTimeout(timer);
   }
 
-  let payload: MetaPayload | null = null;
+  let payload: ModelPayload | null = null;
   try {
-    payload = bodyText ? (JSON.parse(bodyText) as MetaPayload) : null;
+    payload = bodyText ? (JSON.parse(bodyText) as ModelPayload) : null;
   } catch {
     payload = null;
   }
@@ -185,11 +203,15 @@ async function attemptOnce(
     throw mapHttpError(response.status, payload);
   }
 
-  const choice = payload?.choices?.[0];
-  if (choice?.message?.refusal) {
-    throw new ProviderError('model_refusal', 'The provider declined to analyze this image.', 422, false);
-  }
-  if (choice?.finish_reason === 'content_filter') {
+  const candidate = payload?.candidates?.[0];
+  if (
+    payload?.promptFeedback?.blockReason ||
+    candidate?.finishReason === 'SAFETY' ||
+    candidate?.finishReason === 'PROHIBITED_CONTENT' ||
+    candidate?.finishReason === 'RECITATION' ||
+    candidate?.finishReason === 'BLOCKLIST' ||
+    candidate?.finishReason === 'SPII'
+  ) {
     throw new ProviderError('model_refusal', 'The provider declined to analyze this image.', 422, false);
   }
 
@@ -213,8 +235,8 @@ async function attemptOnce(
   return { raw: validated.data };
 }
 
-export async function analyzeWithMeta(input: MetaInput): Promise<MetaOutput> {
-  const apiKey = process.env.MODEL_API_KEY?.trim();
+export async function analyzeWithModel(input: ModelInput): Promise<ModelOutput> {
+  const apiKey = modelApiKey();
   if (!apiKey) {
     throw new ProviderError('missing_key', 'Model credentials are not configured.', 503, false);
   }

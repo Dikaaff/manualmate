@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { runAnalysis } from '../../lib/analysis';
-import { ProviderError } from '../../lib/meta';
+import { ProviderError } from '../../lib/vision';
 import { detectImageMime, validateUpload } from '../../lib/upload';
 
 export const runtime = 'nodejs';
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
         latencyMs: result.latencyMs,
         grounding: result.grounding.status,
         safety: result.safety.category,
-        modelCalled: result.provider === 'meta',
+        modelCalled: result.provider === 'model',
       },
     });
   } catch (error) {

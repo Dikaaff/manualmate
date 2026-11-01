@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { AnalysisResult } from '../types';
-import { analyzeWithMeta } from './meta';
+import { analyzeWithModel } from './vision';
 import { validateGrounding } from './grounding';
 import type { RawAnalysis } from './model-schema';
 import { blockedCategoryLabel, evaluateSafety, preflightHint, type SafetyGateDecision } from './safety';
@@ -100,11 +100,11 @@ export async function runAnalysis(input: AnalyzeInput): Promise<AnalysisResult> 
   const preflight = preflightHint(input.hint);
   if (preflight) return preflightResult(preflight);
 
-  const { raw, model, latencyMs } = await analyzeWithMeta({
+  const { raw, model, latencyMs } = await analyzeWithModel({
     image: input.image,
     mimeType: input.mimeType,
     hint: input.hint,
   });
 
-  return finalizeAnalysis(raw, 'meta', model, latencyMs, input.hint);
+  return finalizeAnalysis(raw, 'model', model, latencyMs, input.hint);
 }

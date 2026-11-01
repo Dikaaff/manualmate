@@ -60,7 +60,7 @@ export type AnalysisResult = {
     status: GroundingStatus;
     note: string;
   };
-  provider: 'meta' | 'safety-pregate';
+  provider: 'model' | 'safety-pregate';
   model: string;
   latencyMs: number;
 };
@@ -80,7 +80,7 @@ export type HistoryEntry = {
 export type HealthResponse = {
   ok: boolean;
   configured: boolean;
-  provider: 'meta' | 'unconfigured';
+  provider: 'model' | 'unconfigured';
   model: string;
   version: string;
 };

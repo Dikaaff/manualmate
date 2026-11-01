@@ -82,7 +82,7 @@ const stringArray = (maxItems: number) => ({
   maxItems,
 });
 
-export const metaResponseSchema = {
+export const analysisResponseSchema = {
   type: 'object',
   properties: {
     object: {

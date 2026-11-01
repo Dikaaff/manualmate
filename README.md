@@ -8,14 +8,14 @@ There is no demo fixture and no canned analysis. If the model is not configured 
 
 - App: https://manualmate-production.vercel.app
 - Health: https://manualmate-production.vercel.app/api/health
-- Runtime: Vercel Node.js 22, `app/api/analyze` capped at 60 seconds. The adapter spends at most 55 seconds and falls back across models when Meta reports `UNAVAILABLE`.
+- Runtime: Vercel Node.js 22, `app/api/analyze` capped at 60 seconds. The adapter spends at most 55 seconds and falls back across models when the provider reports `UNAVAILABLE`.
 
 ## What is real
 
 | Capability | Implementation |
 | --- | --- |
-| Vision analysis | The uploaded image is sent to Meta (`muse-spark-1.3` by default) with a validated JSON contract. Optional fallback models can be configured explicitly. |
-| Visual grounding | Meta returns `box_2d` regions normalized to 0-1000. The server validates bounds, size, and duplicates; the client draws them over the uploaded photo. |
+| Vision analysis | The uploaded image is sent to the vision model API (configurable via `MODEL_NAME`) with a validated JSON contract. Optional fallback models can be configured explicitly. |
+| Visual grounding | The model returns `box_2d` regions normalized to 0-1000. The server validates bounds, size, and duplicates; the client draws them over the uploaded photo. |
 | Safety gate | Six checks in `app/lib/safety.ts`. A blocked result is stripped of tools, parts, and steps on the server before the response leaves the API. |
 | Repair checklist | The model returns ordered steps with a stop condition per step. The UI tracks progress and can copy a repair brief. |
 | History | The last 8 results are stored in the browser as a compressed image plus thumbnail. No server database and no photo bucket. |
@@ -24,7 +24,7 @@ There is no demo fixture and no canned analysis. If the model is not configured 
 ## Requirements
 
 - Node.js 22 LTS recommended (the deployment is pinned to `22.x`; newer local versions also work).
-- A Meta Model API key with access to `muse-spark-1.3`.
+- A vision model API key (the free tier works) with access to a vision model.
 
 ## Setup
 
@@ -37,7 +37,7 @@ npm run dev
 
 Open http://localhost:3000. The header must show `MODEL READY`. If it shows `SERVICE UNAVAILABLE`, the server cannot see a key and analysis is disabled by design.
 
-Get a key from the Meta developer dashboard: https://dev.meta.ai/docs/authentication
+Get a free key from Google AI Studio: https://aistudio.google.com/apikey
 
 ## Verify
 
@@ -46,7 +46,7 @@ npm run verify   # typecheck + 34 tests
 npm run build
 ```
 
-The test suite includes a full pipeline test against a local Meta-compatible HTTP server, so it runs without a real key.
+The test suite includes a full pipeline test against a local model-compatible HTTP server, so it runs without a real key.
 
 To test the live path against a running server:
 
@@ -63,7 +63,7 @@ flowchart LR
   C -->|blocked| Z[Blocked result<br/>steps stripped]
   C -->|allowed| D{Model key<br/>configured?}
   D -->|no| E[503 missing_key<br/>no result]
-  D -->|yes| F[Meta muse-spark-1.3<br/>optional model fallback<br/>validated JSON + box_2d]
+  D -->|yes| F[Vision model<br/>optional model fallback<br/>validated JSON + box_2d]
   F --> G[Zod validation]
   G --> H[Safety gate<br/>model + object + keywords + actions + confidence]
   H --> I[Grounding validation<br/>bounds, size, dedupe]
@@ -80,7 +80,7 @@ Full details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 2. The API checks the file signature, size, and rate limit.
 3. A preflight scan checks the hint. `"electrical panel"` stops before any model call.
 4. If no key is configured, the request fails with `503 missing_key`. There is no fixture or canned analysis.
-5. Meta receives the image in a user message, a strict system prompt, and a JSON contract. A transient upstream failure moves to the next explicitly configured model.
+5. The model receives the image as inline data, a strict system prompt, and a JSON contract. A transient upstream failure moves to the next explicitly configured model.
 6. The response is parsed and validated with Zod; malformed JSON triggers one retry.
 7. The safety gate checks the model's classification, object category, hazard keywords, dangerous actions, and confidence floor.
 8. Grounding validation drops boxes that are out of bounds, too small, full-frame, or duplicated.
@@ -109,7 +109,7 @@ Model boxes are approximate. ManualMate validates coordinates, minimum size, max
 
 ## Privacy and data
 
-- The photo is sent to Meta for one request. ManualMate does not persist it server-side.
+- The photo is sent to the model provider for one request. ManualMate does not persist it server-side.
 - History lives in `localStorage`, capped at 8 entries, stored as a 640 px image plus a 180 px thumbnail.
 - No accounts, no database, no analytics, no secret in client code.
 - `GET /api/health` reports only whether a key is configured and which model is active.
@@ -139,7 +139,7 @@ Returns `{ result, meta }`. `result.blocked` is authoritative. Errors use HTTP s
 ### `GET /api/health`
 
 ```json
-{ "ok": true, "configured": true, "provider": "meta", "model": "muse-spark-1.3", "version": "1.0.0" }
+{ "ok": true, "configured": true, "provider": "model", "model": "vision", "version": "1.0.0" }
 ```
 
 `ok` and `configured` are false when the key is missing. The endpoint never returns the key.
@@ -148,8 +148,8 @@ Returns `{ result, meta }`. `result.blocked` is authoritative. Errors use HTTP s
 
 ```dotenv
 MODEL_API_KEY=
-MODEL_NAME=muse-spark-1.3
-MODEL_FALLBACK_MODELS=,
+MODEL_NAME=
+MODEL_FALLBACK_MODELS=
 ```
 
 `MODEL_FALLBACK_MODELS` is an optional comma-separated cascade. `MODEL_BASE_URL` is an optional override for tests or a compatible gateway.
@@ -173,13 +173,13 @@ app/
   api/health/route.ts      safe configuration status
   components/              upload, overlay, result, history, safety views
   lib/analysis.ts          orchestration + server-side safety strip
-  lib/meta.ts            real model adapter, retry, timeout
-  lib/model-schema.ts      Zod contract, Meta schema, prompts
+  lib/vision.ts            real model adapter, retry, timeout
+  lib/model-schema.ts      Zod contract, model schema, prompts
   lib/safety.ts            six-check safety gate
   lib/grounding.ts         box validation and honesty status
   lib/upload.ts            signature and size validation
   types.ts                 shared contract
-tests/                     34 tests, including a mock Meta server
+tests/                     34 tests, including a mock model server
 docs/
   ARCHITECTURE.md
   EVIDENCE.md
@@ -197,10 +197,10 @@ docs/
 
 ## Verification map
 
-Start with [docs/EVIDENCE.md](docs/EVIDENCE.md). Short version: the live path is `app/api/analyze/route.ts` -> `app/lib/analysis.ts` -> `app/lib/meta.ts`, and `tests/meta-integration.test.ts` runs that entire path against a Meta-compatible server.
+Start with [docs/EVIDENCE.md](docs/EVIDENCE.md). Short version: the live path is `app/api/analyze/route.ts` -> `app/lib/analysis.ts` -> `app/lib/vision.ts`, and `tests/vision-integration.test.ts` runs that entire path against a model-compatible server.
 
 ## Why this is not a simple image analyzer
 
-ManualMate is an observe-only, verifiable inspection agent. It combines a server-side preflight safety gate, a constrained Meta vision response, Zod validation, normalized visual grounding, a second safety pass, and server-side removal of unsafe tools or steps. The visible decision trace shows the path from preflight to model, safety, grounding, and finalization. A model guess alone is never presented as a repair instruction.
+ManualMate is an observe-only, verifiable inspection agent. It combines a server-side preflight safety gate, a constrained vision response, Zod validation, normalized visual grounding, a second safety pass, and server-side removal of unsafe tools or steps. The visible decision trace shows the path from preflight to model, safety, grounding, and finalization. A model guess alone is never presented as a repair instruction.
 
 The small labeled acceptance set and baseline results are documented in [docs/EVAL-SET.md](docs/EVAL-SET.md). The three-minute walkthrough is scripted in [docs/DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md).

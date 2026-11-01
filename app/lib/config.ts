@@ -1,12 +1,16 @@
 export const APP_VERSION = '1.0.0';
-export const DEFAULT_MODEL = 'muse-spark-1.3';
-export const DEFAULT_FALLBACK_MODELS: string[] = [];
-export const DEFAULT_META_BASE_URL = 'https://api.meta.ai/v1';
+export const DEFAULT_MODEL = 'gemini-3.6-flash';
+export const DEFAULT_FALLBACK_MODELS: string[] = ['gemini-3.7-flash', 'gemini-3.5-flash'];
+export const DEFAULT_MODEL_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 
-export type AnalysisMode = 'meta' | 'unconfigured';
+export type AnalysisMode = 'model' | 'unconfigured';
+
+export function modelApiKey(): string | undefined {
+  return process.env.MODEL_API_KEY?.trim() || undefined;
+}
 
 export function hasModelKey(): boolean {
-  return Boolean(process.env.MODEL_API_KEY?.trim());
+  return Boolean(modelApiKey());
 }
 
 export function configuredModel(): string {
@@ -23,11 +27,11 @@ export function fallbackModels(): string[] {
   return [...new Set(candidates)].filter((model) => model !== primary);
 }
 
-export function metaBaseUrl(): string {
+export function modelBaseUrl(): string {
   const override = process.env.MODEL_BASE_URL?.trim();
-  return override ? override.replace(/\/+$/, '') : DEFAULT_META_BASE_URL;
+  return override ? override.replace(/\/+$/, '') : DEFAULT_MODEL_BASE_URL;
 }
 
 export function resolveMode(): AnalysisMode {
-  return hasModelKey() ? 'meta' : 'unconfigured';
+  return hasModelKey() ? 'model' : 'unconfigured';
 }

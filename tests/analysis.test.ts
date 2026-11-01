@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { finalizeAnalysis, runAnalysis } from '../app/lib/analysis';
-import { ProviderError } from '../app/lib/meta';
+import { ProviderError } from '../app/lib/vision';
 import type { RawAnalysis } from '../app/lib/model-schema';
 
 const safeRaw: RawAnalysis = {
@@ -24,12 +24,12 @@ const safeRaw: RawAnalysis = {
 };
 
 test('safe model output keeps steps and a verified marker', () => {
-  const result = finalizeAnalysis(safeRaw, 'meta', 'test-model', 1234, 'chair');
+  const result = finalizeAnalysis(safeRaw, 'model', 'test-model', 1234, 'chair');
   assert.equal(result.blocked, false);
   assert.equal(result.steps.length, 2);
   assert.equal(result.tools.length, 1);
   assert.equal(result.grounding.status, 'verified');
-  assert.equal(result.provider, 'meta');
+  assert.equal(result.provider, 'model');
   assert.equal(result.model, 'test-model');
 });
 
@@ -43,7 +43,7 @@ test('blocked model output is stripped server-side even if the model wrote steps
       professional: 'a licensed electrician',
     },
   };
-  const result = finalizeAnalysis(blockedRaw, 'meta', 'test-model', 900, 'chair');
+  const result = finalizeAnalysis(blockedRaw, 'model', 'test-model', 900, 'chair');
   assert.equal(result.blocked, true);
   assert.equal(result.steps.length, 0);
   assert.equal(result.tools.length, 0);

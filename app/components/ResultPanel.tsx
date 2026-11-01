@@ -164,12 +164,12 @@ export function ResultPanel({
       {!busy && !error && result && (
         <div className="result">
           <div className="result-toolbar">
-<span className={`badge ${result.provider === 'meta' ? 'live' : 'stop'}`}>
-{result.provider === 'meta' ? <SparkIcon /> : <ShieldIcon />}
-{result.provider === 'meta' ? 'Model result' : 'Safety preflight'}
+<span className={`badge ${result.provider === 'model' ? 'live' : 'stop'}`}>
+{result.provider === 'model' ? <SparkIcon /> : <ShieldIcon />}
+{result.provider === 'model' ? 'Model result' : 'Safety preflight'}
             </span>
-<span className="meta-text">{result.provider === 'meta' ? result.model : 'no model call'}</span>
-{result.provider === 'meta' && <span className="meta-text">· {result.latencyMs} ms</span>}
+<span className="meta-text">{result.provider === 'model' ? 'vision model' : 'no model call'}</span>
+{result.provider === 'model' && <span className="meta-text">· {result.latencyMs} ms</span>}
             <span className={`badge ${result.grounding.status}`}>{groundingLabel(result.grounding.status)}</span>
           </div>
 
@@ -180,7 +180,7 @@ export function ResultPanel({
             </div>
             <ol>
               <li className="complete"><span>01</span><strong>Preflight</strong><small>photo and hazard gate</small></li>
-              <li className={result.provider === 'meta' ? 'complete' : 'skipped'}><span>02</span><strong>Model</strong><small>{result.provider === 'meta' ? result.model : 'skipped'}</small></li>
+              <li className={result.provider === 'model' ? 'complete' : 'skipped'}><span>02</span><strong>Model</strong><small>{result.provider === 'model' ? 'vision model' : 'skipped'}</small></li>
               <li className={result.blocked ? 'blocked-step' : 'complete'}><span>03</span><strong>Safety</strong><small>{result.blocked ? 'stopped' : 'passed'}</small></li>
               <li className={result.grounding.status === 'ungrounded' ? 'blocked-step' : 'complete'}><span>04</span><strong>Grounding</strong><small>{groundingLabel(result.grounding.status)}</small></li>
               <li className={result.blocked ? 'blocked-step' : 'complete'}><span>05</span><strong>Finalize</strong><small>{result.blocked ? 'no guidance' : 'checklist ready'}</small></li>

@@ -42,7 +42,7 @@ The product is ready when:
 
 ### Now: real core
 
-- [x] Meta adapter with structured output, timeout, retry, and error mapping.
+- [x] vision adapter with structured output, timeout, retry, and error mapping.
 - [x] Zod validation and a strict JSON schema.
 - [x] Six-check safety gate and server-side strip.
 - [x] Grounding validation and honest status.
@@ -78,7 +78,7 @@ The product is ready when:
 | Unsafe category slips through | Six checks plus server-side strip; overblocking is acceptable. |
 | Key missing in deployment | Health endpoint and UI clearly disable analysis. |
 | Cost spikes | One call per request, 10/minute limiter, no retries on success. |
-| Privacy concerns | No server storage; photos sent to Meta once; local history only. |
+| Privacy concerns | No server storage; photos sent to the model provider once; local history only. |
 
 ## Deployment
 

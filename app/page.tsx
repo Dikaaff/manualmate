@@ -210,7 +210,7 @@ export default function HomePage() {
         <div className="appbar-inner">
           <button type="button" className="brand" onClick={() => setView('analysis')} aria-label="ManualMate home">
             <span className="brand-mark" aria-hidden="true">
-              <ShieldIcon />
+              <img src="/icon.svg" alt="" width={34} height={34} />
             </span>
             <span className="brand-text">
               <span className="brand-name">ManualMate</span>
@@ -240,10 +240,9 @@ export default function HomePage() {
             />
           </nav>
 
-          <span className={`service ${serviceState}`} title={health?.model ? `Model: ${health.model}` : undefined}>
+          <span className={`service ${serviceState}`} title={health?.configured ? 'Vision model configured' : undefined}>
             <span className="service-dot" aria-hidden="true" />
             <span>{serviceLabel}</span>
-            {serviceState === 'ready' && health?.model && <code className="service-model">{health.model}</code>}
           </span>
         </div>
       </header>
@@ -306,7 +305,7 @@ export default function HomePage() {
                 <dl className="hero-panel-rows">
                   <div>
                     <dt>Engine</dt>
-                    <dd>{health?.model && health.model !== 'none' ? health.model : 'Meta vision'}</dd>
+                    <dd>Vision model</dd>
                   </div>
                   <div>
                     <dt>Safety gate</dt>

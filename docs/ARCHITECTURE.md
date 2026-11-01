@@ -29,14 +29,14 @@ flowchart TB
     UPLOAD[upload.ts<br/>signature + size]
     ORCH[analysis.ts<br/>orchestrator]
     PRE[safety.ts<br/>preflight]
-    GEM[meta.ts<br/>Meta adapter]
+    GEM[vision.ts<br/>vision adapter]
     SCHEMA[model-schema.ts<br/>Zod + JSON schema + prompts]
     SAFE[safety.ts<br/>evaluateSafety]
     GROUND[grounding.ts<br/>box validation]
   end
 
   subgraph External
-    API[Meta API]
+    API[vision model API]
   end
 
   UI --> IMG --> ROUTE
@@ -70,7 +70,7 @@ sequenceDiagram
   participant R as /api/analyze
   participant S as Safety preflight
   participant K as Key check
-  participant G as Meta 3.8 Flash + fallback
+  participant G as Vision model + fallback
   participant V as Validators
   participant U as UI
 
@@ -177,7 +177,7 @@ The raw model output is validated by `rawAnalysisSchema` in `app/lib/model-schem
 }
 ```
 
-The Meta request also uses a JSON Schema (`metaResponseSchema`) with enums and required fields. Structured output reduces parse failures; Zod is still the final authority.
+The model request also uses a JSON Schema (`analysisResponseSchema`) with enums and required fields. Structured output reduces parse failures; Zod is still the final authority.
 
 Prompt priorities are explicit: safety first, grounding second, repair third. The model is told to return an empty `regions` array rather than invent a marker, and to use a low self-rating when the evidence is weak.
 
@@ -186,7 +186,7 @@ Prompt priorities are explicit: safety first, grounding second, repair third. Th
 The provider boundary is a single function:
 
 ```ts
-analyzeWithMeta(input): Promise<{ raw, model, latencyMs }>  // primary + fallback cascade
+analyzeWithModel(input): Promise<{ raw, model, latencyMs }>  // primary + fallback cascade
 ```
 
 To add a different vision provider:
@@ -238,7 +238,7 @@ The upstream error body is never forwarded to the client. Only a coarse code and
 - `tests/grounding.test.ts` Ã¢â‚¬â€ valid, clamped, full-frame, tiny, broad, duplicates, invalid data.
 - `tests/upload.test.ts` Ã¢â‚¬â€ magic bytes, size limit, mismatched declared type.
 - `tests/analysis.test.ts` Ã¢â‚¬â€ server-side stripping, missing-key refusal, preflight short-circuit.
-- `tests/meta-integration.test.ts` Ã¢â‚¬â€ full pipeline against a local Meta-compatible HTTP server: request shape, base64 image, JSON schema mode, malformed-JSON retry, invalid-key mapping.
+- `tests/vision-integration.test.ts` Ã¢â‚¬â€ full pipeline against a local model-compatible HTTP server: request shape, base64 image, JSON schema mode, malformed-JSON retry, invalid-key mapping.
 
 ## Non-goals
 

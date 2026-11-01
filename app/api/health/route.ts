@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { APP_VERSION, configuredModel, hasModelKey, resolveMode } from '../../lib/config';
+import { APP_VERSION, hasModelKey, resolveMode } from '../../lib/config';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -11,7 +11,7 @@ export async function GET() {
       ok: configured,
       configured,
       provider: resolveMode(),
-      model: configured ? configuredModel() : 'none',
+      model: configured ? 'vision' : 'none',
       version: APP_VERSION,
     },
     { headers: { 'Cache-Control': 'no-store' } },

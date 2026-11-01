@@ -6,7 +6,7 @@
 
 ## 0:20–0:55 — Safe furniture path
 
-Upload a clear chair photo and add “wobbly rear-left leg.” Show the marker, model self-rating, grounded status, and checklist. Point to the decision trace: preflight, Meta model, safety, grounding, finalize.
+Upload a clear chair photo and add “wobbly rear-left leg.” Show the marker, model self-rating, grounded status, and checklist. Point to the decision trace: preflight, vision model, safety, grounding, finalize.
 
 ## 0:55–1:25 — Verifiability
 
@@ -20,6 +20,6 @@ Submit an electrical-panel or exposed-wiring photo. Show that the server blocks 
 
 Show the unconfigured state or a deliberately invalid image. Explain that missing credentials, malformed output, low confidence, and bad grounding produce a stop or retake request—never a canned answer.
 
-## 2:35–3:00 — Meta and close
+## 2:35–3:00 — Model and close
 
-“The app uses Meta Model API with `muse-spark-1.3`, a strict JSON contract, Zod validation, safety gates, and local-only history. ManualMate is not diagnosing a defect; it is producing a cautious, grounded next inspection step.”
+“The app uses the vision model API with a strict JSON contract, Zod validation, safety gates, and local-only history. ManualMate is not diagnosing a defect; it is producing a cautious, grounded next inspection step.”

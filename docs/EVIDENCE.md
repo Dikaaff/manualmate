@@ -27,16 +27,16 @@ The smoke output shows the provider, model, block state, safety category and sou
 
 | Evidence | Location |
 | --- | --- |
-| Meta endpoint and API key header | `app/lib/meta.ts` (`attemptOnce`) |
-| Real image bytes sent as base64 `inlineData` | `app/lib/meta.ts` |
-| Structured JSON mode + schema | `app/lib/meta.ts` (`responseMimeType` / `responseSchema`) |
+| model endpoint and API key header | `app/lib/vision.ts` (`attemptOnce`) |
+| Real image bytes sent as base64 `inlineData` | `app/lib/vision.ts` |
+| Structured JSON mode + schema | `app/lib/vision.ts` (`responseMimeType` / `responseSchema`) |
 | Prompt priorities: safety, grounding, repair | `app/lib/model-schema.ts` (`systemPrompt`) |
 | Zod validation of the model output | `app/lib/model-schema.ts` (`rawAnalysisSchema`) |
-| One retry on malformed JSON, then a live model cascade | `app/lib/meta.ts`, `app/lib/config.ts` |
-| Missing key refuses to analyze | `app/lib/meta.ts`, `app/lib/analysis.ts` |
-| Full pipeline test against a mock Meta server | `tests/meta-integration.test.ts` |
+| One retry on malformed JSON, then a live model cascade | `app/lib/vision.ts`, `app/lib/config.ts` |
+| Missing key refuses to analyze | `app/lib/vision.ts`, `app/lib/analysis.ts` |
+| Full pipeline test against a mock model server | `tests/vision-integration.test.ts` |
 
-`tests/meta-integration.test.ts` starts a local HTTP server, asserts the URL, API key header, base64 payload, `thinkingLevel: "low"`, and canonical JSON schema mode, then returns an answer that flows through safety and grounding. It also covers malformed-JSON retry, invalid-key mapping, and model fallback. It runs offline.
+`tests/vision-integration.test.ts` starts a local HTTP server, asserts the URL, API key header, base64 `inlineData` payload, and canonical JSON schema mode, then returns an answer that flows through safety and grounding. It also covers malformed-JSON retry, invalid-key mapping, and model fallback. It runs offline.
 
 The real key is only needed for the live smoke test and for using the product.
 
